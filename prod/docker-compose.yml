@@ -1,0 +1,67 @@
+version: '3.9'
+
+services:
+  db:
+    image: mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${ROOT_PASSWORD}
+    volumes:
+      - db_volume:/var/lib/mysql
+    expose:
+      - "3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - internal
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - "8080:8080"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.adminer.rule=Host(`adminer.louisdev.fr`)"
+      - "traefik.http.routers.adminer.entrypoints=websecure"
+      - "traefik.http.services.adminer.loadbalancer.server.port=8080"
+      - "traefik.http.routers.adminer.service=adminer"
+      - "traefik.http.routers.adminer.tls.certresolver=leresolver"
+    networks:
+      - traefik
+
+  api:
+    restart: always
+    build:
+      dockerfile: Dockerfile
+      context: .
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - ./cert:/app/cert
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api.rule=Host(`cicd-back.louisdev.fr`)"
+      - "traefik.http.routers.api.entrypoints=websecure"
+      - "traefik.http.services.api.loadbalancer.server.port=8000"
+      - "traefik.http.routers.api.service=api"
+      - "traefik.http.routers.api.tls.certresolver=leresolver"
+    networks:
+      - traefik
+      - internal
+
+volumes:
+  db_volume:
+
+networks:
+  traefik:
+    external: true
+  internal:
+    driver: bridge
