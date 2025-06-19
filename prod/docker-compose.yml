@@ -39,8 +39,7 @@ services:
       db:
         condition: service_healthy
     volumes:
-      - .:/app
-      - ./cert:/app/cert
+      - ../:/app
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.api.rule=Host(`cicd-back.louisdev.fr`)"
